@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ONGC CO₂ Corrosion Calculator</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #f0f2f5;
+  --white:     #ffffff;
+  --accent:    #1a56db;
+  --accent-d:  #1345b7;
+  --accent-l:  #eff6ff;
+  --text:      #111928;
+  --muted:     #6b7280;
+  --border:    #e5e7eb;
+  --card:      #f9fafb;
+  --hdr:       #1e2939;
+  --hdr-sub:   #9ca3af;
+  --hdr-eye:   #93c5fd;
+  --risk-high-bg: #fef2f2; --risk-high-fg: #dc2626;
+  --risk-mod-bg:  #fff7ed; --risk-mod-fg:  #d97706;
+  --risk-low-bg:  #f0fdf4; --risk-low-fg:  #16a34a;
+  --risk-neg-bg:  #eff6ff; --risk-neg-fg:  #2563eb;
+  --radius: 10px;
+  --shadow: 0 1px 4px rgba(0,0,0,.07), 0 4px 16px rgba(0,0,0,.05);
+}
+html { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; font-size: 14px; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── Header ───────────────────────────────────────────────────────────────── */
+header {
+  background: var(--hdr);
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25);
+}
+#logo-img { height: 62px; width: auto; display: block; flex-shrink: 0; }
+#logo-text {
+  display: none;
+  font-size: 22px; font-weight: 800;
+  color: var(--white); letter-spacing: .5px;
+  padding: 6px 12px;
+  border: 2px solid rgba(255,255,255,.3);
+  border-radius: 6px;
+}
+.hdr-text { flex: 1; }
+.hdr-eyebrow { font-size: 11px; color: var(--hdr-eye); letter-spacing: .5px; font-weight: 600; text-transform: uppercase; }
+.hdr-title   { font-size: 22px; font-weight: 700; color: var(--white); line-height: 1.2; margin: 3px 0; }
+.hdr-sub     { font-size: 12px; color: var(--hdr-sub); }
+.hdr-badge {
+  background: #2d3f55; color: #cbd5e1;
+  font-size: 11px; font-weight: 600;
+  padding: 7px 14px; border-radius: 6px;
+  white-space: nowrap; letter-spacing: .3px;
+}
+
+/* ── Layout ───────────────────────────────────────────────────────────────── */
+.page { max-width: 1440px; margin: 0 auto; padding: 24px 24px 48px; }
+.grid { display: grid; grid-template-columns: 360px 1fr; gap: 20px; align-items: start; }
+
+/* ── Cards ────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.card-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 700; font-size: 13px;
+  color: var(--text);
+  background: var(--card);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+.card-body { padding: 16px 18px; }
+
+/* ── Form sections ────────────────────────────────────────────────────────── */
+.section-label {
+  font-size: 11px; font-weight: 700;
+  color: var(--accent); text-transform: uppercase; letter-spacing: .6px;
+  margin: 18px 0 10px;
+}
+.section-label:first-child { margin-top: 4px; }
+.field { margin-bottom: 12px; }
+.field-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.field-label { font-size: 12.5px; font-weight: 500; color: var(--text); }
+.field-unit  { font-size: 11px; color: var(--muted); }
+input[type="number"] {
+  width: 100%; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; color: var(--text);
+  background: var(--white);
+  outline: none; transition: border-color .15s, box-shadow .15s;
+  -moz-appearance: textfield;
+}
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+input[type="number"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26,86,219,.12);
+}
+input[type="number"].error { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.1); }
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn-row { display: flex; gap: 10px; margin-top: 18px; }
+.btn-primary {
+  flex: 1; padding: 11px 16px;
+  background: var(--accent); color: var(--white);
+  border: none; border-radius: 7px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  transition: background .15s, transform .08s;
+}
+.btn-primary:hover  { background: var(--accent-d); }
+.btn-primary:active { transform: scale(.98); }
+.btn-secondary {
+  padding: 11px 20px;
+  background: var(--white); color: var(--text);
+  border: 1px solid var(--border); border-radius: 7px;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background .15s;
+}
+.btn-secondary:hover { background: var(--card); }
+
+/* ── Error ────────────────────────────────────────────────────────────────── */
+.error-msg {
+  display: none; margin-top: 10px;
+  padding: 10px 12px; border-radius: 7px;
+  background: #fef2f2; color: #dc2626;
+  font-size: 12px; font-weight: 500;
+  border: 1px solid #fecaca;
+}
+
+/* ── Metric cards ─────────────────────────────────────────────────────────── */
+.metric-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+.metric-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px; }
+.metric-label { font-size: 11.5px; color: var(--muted); font-weight: 500; margin-bottom: 8px; }
+.metric-value { font-size: 32px; font-weight: 800; font-family: "Consolas", "Courier New", monospace; color: var(--muted); line-height: 1; }
+.metric-value.final { color: var(--accent); }
+.metric-unit  { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.risk-badge {
+  display: inline-block; margin-top: 12px;
+  padding: 5px 14px; border-radius: 999px;
+  font-size: 12px; font-weight: 700; letter-spacing: .3px;
+}
+.risk-high     { background: var(--risk-high-bg); color: var(--risk-high-fg); }
+.risk-moderate { background: var(--risk-mod-bg);  color: var(--risk-mod-fg); }
+.risk-low      { background: var(--risk-low-bg);  color: var(--risk-low-fg); }
+.risk-negligible { background: var(--risk-neg-bg); color: var(--risk-neg-fg); }
+
+/* ── Correction factor cards ─────────────────────────────────────────────── */
+.factors-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 4px 0;
+}
+.factor-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  transition: box-shadow .15s;
+}
+.factor-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.09); }
+.factor-name  { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+.factor-value { font-size: 20px; font-weight: 800; font-family: "Consolas", monospace; color: var(--text); }
+.factor-desc  { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.formula-toggle {
+  display: inline-block; margin-top: 8px;
+  font-size: 10.5px; font-weight: 600;
+  color: var(--accent); cursor: pointer; user-select: none;
+}
+.formula-toggle:hover { text-decoration: underline; }
+.formula-box {
+  display: none; margin-top: 6px;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 5px; padding: 6px 8px;
+  font-size: 10.5px; font-family: "Consolas", monospace;
+  color: var(--muted); word-break: break-all; line-height: 1.5;
+}
+
+/* ── Collapsible ──────────────────────────────────────────────────────────── */
+.collapsible {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.collapse-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 18px; cursor: pointer;
+  background: var(--white);
+  font-size: 13px; font-weight: 700; color: var(--text);
+  user-select: none;
+  transition: background .12s;
+}
+.collapse-header:hover { background: var(--card); }
+.collapse-arrow { font-size: 10px; color: var(--muted); transition: transform .2s; }
+.collapse-arrow.open { transform: rotate(90deg); }
+.collapse-body { display: none; padding: 0 18px 16px; }
+.collapse-body.open { display: block; }
+
+/* ── Trace table ──────────────────────────────────────────────────────────── */
+.trace-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th {
+  background: var(--card); color: var(--text);
+  font-weight: 700; font-size: 11.5px;
+  padding: 10px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+tbody td { padding: 9px 14px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:nth-child(odd)  { background: var(--card); }
+tbody tr:nth-child(even) { background: var(--white); }
+tbody tr:hover { background: #f0f6ff; }
+.td-param   { font-weight: 600; color: var(--text); white-space: nowrap; }
+.td-formula { font-family: "Consolas", monospace; color: var(--muted); white-space: nowrap; }
+.td-value   { font-family: "Consolas", monospace; font-weight: 700; color: var(--accent); white-space: nowrap; }
+.td-notes   { color: var(--muted); font-style: italic; }
+
+/* ── Theory box ───────────────────────────────────────────────────────────── */
+.theory-body { font-size: 12.5px; line-height: 1.7; color: var(--text); }
+.theory-body h4 { font-size: 13px; font-weight: 700; margin: 14px 0 5px; color: var(--accent); }
+.theory-body h4:first-child { margin-top: 4px; }
+.theory-body ul { padding-left: 18px; margin: 4px 0 8px; }
+.theory-body li { margin-bottom: 3px; }
+.theory-body code { font-family: "Consolas", monospace; background: var(--card); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.theory-body .ref { margin-top: 14px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--border); padding-top: 10px; }
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+.spinner { display: none; width: 18px; height: 18px; border: 3px solid rgba(255,255,255,.4); border-top-color: var(--white); border-radius: 50%; animation: spin .7s linear infinite; margin: 0 auto; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .grid { grid-template-columns: 1fr; }
+  .factors-grid { grid-template-columns: repeat(2, 1fr); }
+  header { padding: 14px 16px; }
+  .hdr-title { font-size: 17px; }
+}
+@media (max-width: 560px) {
+  .factors-grid { grid-template-columns: 1fr; }
+  .metric-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────────────────── -->
+<header>
+  <img id="logo-img" src="/static/ongc_logo.png" alt="ONGC Logo"
+       onerror="this.style.display='none'; document.getElementById('logo-text').style.display='block'">
+  
+  <div class="hdr-text">
+    
+    <div class="hdr-title"> CO₂ Corrosion Calculator</div>
+    <div class="hdr-sub">de Waard–Milliams model </div>
+  </div>
+ 
+</header>
+
+<!-- ── Page ─────────────────────────────────────────────────────────────── -->
+<div class="page">
+<div class="grid">
+
+  <!-- ── LEFT — Input Panel ─────────────────────────────────────────────── -->
+  <div>
+    <div class="card">
+      <div class="card-header">Input Parameters</div>
+      <div class="card-body">
+
+        <!-- Theory collapsible inside input card -->
+        <div class="collapsible" style="margin-bottom:14px; box-shadow:none;">
+          <div class="collapse-header" onclick="toggleCollapse(this)">
+            <span class="collapse-arrow">▶</span>
+            Model Theory &amp; Background
+          </div>
+          <div class="collapse-body">
+            <div class="theory-body" style="font-size:12px;">
+              <h4>de Waard–Milliams CO₂ Corrosion Model</h4>
+              <p>The nominal corrosion rate <code>V_nom</code> is calculated via an Arrhenius-type
+              formulation governed by temperature and CO₂ partial pressure. Correction factors
+              are then applied to account for real pipeline conditions.</p>
+              <h4>Key Correction Factors</h4>
+              <ul>
+                <li><strong>F_sys</strong> — High-pressure gas non-ideality</li>
+                <li><strong>F_scale</strong> — Protective FeCO₃ scale above T_scale</li>
+                <li><strong>F_pH</strong> — Actual vs saturation pH of water phase</li>
+                <li><strong>F_oil</strong> — Oil wetting inhibits water contact</li>
+                <li><strong>F_cond</strong> — Water condensation rate in wet-gas</li>
+                <li><strong>F_glyc</strong> — Glycol (MEG/DEG) inhibiting effect</li>
+                <li><strong>F_inh</strong> — Chemical inhibitor efficiency</li>
+              </ul>
+              <p class="ref">Ref: de Waard &amp; Milliams, CORROSION/93, Paper 69.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Process Conditions -->
+        <div class="section-label">Process Conditions</div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="temperature">Temperature</label>
+            <span class="field-unit">°C</span>
+          </div>
+          <input type="number" id="temperature" value="80" step="any">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="total_pressure">Total System Pressure</label>
+            <span class="field-unit">bar</span>
+          </div>
+          <input type="number" id="total_pressure" value="60" step="any">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="co2_fraction">CO₂ Concentration</label>
+            <span class="field-unit">fraction (0.05 = 5%)</span>
+          </div>
+          <input type="number" id="co2_fraction" value="0.05" step="any" min="0.001" max="1">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="fugacity_coeff">Fugacity Coefficient (α)</label>
+            <span class="field-unit">—</span>
+          </div>
+          <input type="number" id="fugacity_coeff" value="0.88" step="any">
+        </div>
+
+        <!-- Flow & Pipe Geometry -->
+        <div class="section-label">Flow &amp; Pipe Geometry</div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="pipe_diameter">Pipe Inner Diameter</label>
+            <span class="field-unit">inch</span>
+          </div>
+          <input type="number" id="pipe_diameter" value="6" step="any" min="0.01">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="water_cut">Water Cut</label>
+            <span class="field-unit">%</span>
+          </div>
+          <input type="number" id="water_cut" value="50" step="any" min="0" max="100">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="liquid_rate">Total Liquid Rate</label>
+            <span class="field-unit">m³/day</span>
+          </div>
+          <input type="number" id="liquid_rate" value="500" step="any" min="0">
+        </div>
+
+        <!-- Corrosion Modifiers -->
+        <div class="section-label">Corrosion Modifiers</div>
+
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="condensation_rate">Water Condensation Rate</label>
+            <span class="field-unit">g/m²·s</span>
+          </div>
+          <input type="number" id="condensation_rate" value="2.6" step="any" min="0">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="glycol_content">Glycol Water Content W%</label>
+            <span class="field-unit">%</span>
+          </div>
+          <input type="number" id="glycol_content" value="5" step="any" min="0.01">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="glycol_a">Glycol Factor A (MEG/DEG at 20°C)</label>
+            <span class="field-unit">—</span>
+          </div>
+          <input type="number" id="glycol_a" value="1.6" step="any">
+        </div>
+        <div class="field">
+          <div class="field-top">
+            <label class="field-label" for="inhibitor_eff">Inhibitor Efficiency</label>
+            <span class="field-unit">%</span>
+          </div>
+          <input type="number" id="inhibitor_eff" value="70" step="any" min="0" max="100">
+        </div>
+
+        <div id="error-msg" class="error-msg"></div>
+
+        <div class="btn-row">
+          <button class="btn-primary" id="calc-btn" onclick="runCalculation()">
+            <span id="btn-label">Calculate Corrosion Rate</span>
+            <div class="spinner" id="spinner"></div>
+          </button>
+          <button class="btn-secondary" onclick="resetForm()">Reset</button>
+        </div>
+
+      </div><!-- card-body -->
+    </div><!-- card -->
+  </div><!-- left col -->
+
+
+  <!-- ── RIGHT — Output Panel ───────────────────────────────────────────── -->
+  <div id="output-panel">
+
+    <!-- Metric cards -->
+    <div class="metric-row">
+      <div class="metric-card">
+        <div class="metric-label">Pre-inhibitor Corrosion Rate</div>
+        <div class="metric-value" id="pre-rate">—</div>
+        <div class="metric-unit">mm / year</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Final Corrected Corrosion Rate</div>
+        <div class="metric-value final" id="final-rate">—</div>
+        <div class="metric-unit">mm / year</div>
+        <div id="risk-badge" class="risk-badge" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- Correction Factors -->
+    <div class="collapsible">
+      <div class="collapse-header open-by-default" onclick="toggleCollapse(this)" data-open="true">
+        <span class="collapse-arrow open">▶</span>
+        Correction Factors
+      </div>
+      <div class="collapse-body open" id="factors-body">
+        <div class="factors-grid" id="factors-grid">
+          <div style="color:var(--muted); font-size:12px; padding:8px 0;">
+            Run a calculation to see correction factors.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step-by-step trace -->
+    <div class="collapsible">
+      <div class="collapse-header" onclick="toggleCollapse(this)">
+        <span class="collapse-arrow">▶</span>
+        Step-by-Step Calculation Trace
+      </div>
+      <div class="collapse-body" id="trace-body">
+        <div class="trace-wrap">
+          <table id="trace-table">
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Formula</th>
+                <th>Value</th>
+                <th>Notes / Limitations</th>
+              </tr>
+            </thead>
+            <tbody id="trace-tbody">
+              <tr><td colspan="4" style="color:var(--muted); text-align:center; padding:16px;">
+                Run a calculation to see the trace.
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theory -->
+    <div class="collapsible">
+      <div class="collapse-header" onclick="toggleCollapse(this)">
+        <span class="collapse-arrow">▶</span>
+        de Waard–Milliams Model Theory
+      </div>
+      <div class="collapse-body">
+        <div class="theory-body">
+          <h4>Background</h4>
+          <p>The de Waard–Milliams model (1975, revised 1993) is the industry-standard empirical
+          method for predicting sweet (CO₂) corrosion in carbon steel pipelines. Developed from
+          laboratory and field data across wide temperature and pressure ranges.</p>
+
+          <h4>Core Mechanism</h4>
+          <p>CO₂ dissolves in water forming carbonic acid (H₂CO₃), which drives iron dissolution.
+          The nominal rate is:</p>
+          <p><code>V_nom = 10^(5.8 − 1710/T_K + 0.67 × log pCO₂)</code></p>
+
+          <h4>Final Corrosion Rate</h4>
+          <p><code>CR = V_nom × F_sys × F_scale × F_pH × F_oil × F_cond × F_glyc × F_inh</code></p>
+
+          <h4>Validity &amp; Limitations</h4>
+          <ul>
+            <li>Valid for pCO₂ up to ~10 bar, temperature 20–150 °C</li>
+            <li>Does not cover H₂S (sour corrosion) or erosion-corrosion</li>
+            <li>Does not cover microbiologically induced corrosion (MIC)</li>
+            <li>F_scale not valid if scale is mechanically damaged or removed</li>
+            <li>Always cross-check against field corrosion monitoring data</li>
+          </ul>
+
+          <p class="ref">Reference: de Waard, C. &amp; Milliams, D.E. (1975, updated 1993).
+          <em>Prediction of CO₂ corrosion of carbon steel.</em> CORROSION/93, Paper 69.</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- right col -->
+</div><!-- grid -->
+</div><!-- page -->
+
+
+<script>
+// ── Collapsible panels ──────────────────────────────────────────────────────
+function toggleCollapse(header) {
+  const arrow = header.querySelector('.collapse-arrow');
+  const body  = header.nextElementSibling;
+  const isOpen = body.classList.contains('open');
+  if (isOpen) {
+    body.classList.remove('open');
+    arrow.classList.remove('open');
+  } else {
+    body.classList.add('open');
+    arrow.classList.add('open');
+  }
+}
+
+// ── Formula toggles ─────────────────────────────────────────────────────────
+function toggleFormula(btn) {
+  const box = btn.nextElementSibling;
+  const visible = box.style.display === 'block';
+  box.style.display = visible ? 'none' : 'block';
+  btn.textContent   = visible ? '▶ formula' : '▼ formula';
+}
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+const DEFAULTS = {
+  temperature:'80', total_pressure:'60', co2_fraction:'0.05',
+  fugacity_coeff:'0.88', pipe_diameter:'6', water_cut:'50',
+  liquid_rate:'500', condensation_rate:'2.6',
+  glycol_content:'5', glycol_a:'1.6', inhibitor_eff:'70'
+};
+function resetForm() {
+  Object.entries(DEFAULTS).forEach(([k, v]) => {
+    const el = document.getElementById(k);
+    if (el) { el.value = v; el.classList.remove('error'); }
+  });
+  document.getElementById('error-msg').style.display = 'none';
+  document.getElementById('pre-rate').textContent   = '—';
+  document.getElementById('final-rate').textContent = '—';
+  const rb = document.getElementById('risk-badge');
+  rb.style.display = 'none'; rb.textContent = '';
+  document.getElementById('factors-grid').innerHTML =
+    '<div style="color:var(--muted);font-size:12px;padding:8px 0;">Run a calculation to see correction factors.</div>';
+  document.getElementById('trace-tbody').innerHTML =
+    '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:16px;">Run a calculation to see the trace.</td></tr>';
+}
+
+// ── Calculate ────────────────────────────────────────────────────────────────
+async function runCalculation() {
+  const btn     = document.getElementById('calc-btn');
+  const spinner = document.getElementById('spinner');
+  const lbl     = document.getElementById('btn-label');
+  const errDiv  = document.getElementById('error-msg');
+
+  // Clear previous errors
+  document.querySelectorAll('input[type="number"]').forEach(el => el.classList.remove('error'));
+  errDiv.style.display = 'none';
+
+  // Collect inputs
+  const fields = Object.keys(DEFAULTS);
+  const payload = {};
+  let hasError = false;
+  for (const f of fields) {
+    const el = document.getElementById(f);
+    const v  = parseFloat(el.value);
+    if (el.value.trim() === '' || isNaN(v)) {
+      el.classList.add('error');
+      hasError = true;
+    }
+    payload[f] = el.value;
+  }
+  if (hasError) {
+    errDiv.textContent     = '⚠  Please fill in all fields with valid numbers.';
+    errDiv.style.display   = 'block';
+    return;
+  }
+
+  // Loading state
+  lbl.style.display     = 'none';
+  spinner.style.display = 'block';
+  btn.disabled          = true;
+
+  try {
+    const resp = await fetch('/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await resp.json();
+
+    if (!data.ok) {
+      errDiv.textContent   = '⚠  ' + data.error;
+      errDiv.style.display = 'block';
+    } else {
+      renderResults(data.result);
+    }
+  } catch (err) {
+    errDiv.textContent   = '⚠  Network error. Is the server running?';
+    errDiv.style.display = 'block';
+  } finally {
+    lbl.style.display     = 'block';
+    spinner.style.display = 'none';
+    btn.disabled          = false;
+  }
+}
+
+// ── Render results ───────────────────────────────────────────────────────────
+function renderResults(r) {
+  // Metric values
+  document.getElementById('pre-rate').textContent   = r.pre_rate;
+  document.getElementById('final-rate').textContent = r.corr_rate;
+
+  // Risk badge
+  const rb = document.getElementById('risk-badge');
+  rb.textContent = '● ' + r.risk_label;
+  rb.className   = 'risk-badge risk-' + r.risk_style;
+  rb.style.display = 'inline-block';
+
+  // Correction factors
+  const grid = document.getElementById('factors-grid');
+  grid.innerHTML = '';
+  r.factors.forEach(f => {
+    const card = document.createElement('div');
+    card.className = 'factor-card';
+    card.innerHTML = `
+      <div class="factor-name">${f.name}</div>
+      <div class="factor-value">${f.value}</div>
+      <div class="factor-desc">${f.desc}</div>
+      <span class="formula-toggle" onclick="toggleFormula(this)">▶ formula</span>
+      <div class="formula-box">${f.formula}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Trace table
+  const tbody = document.getElementById('trace-tbody');
+  tbody.innerHTML = '';
+  r.trace.forEach(row => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="td-param">${row.param}</td>
+      <td class="td-formula">${row.formula}</td>
+      <td class="td-value">${row.value}</td>
+      <td class="td-notes">${row.notes}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Auto-calculate on Enter ──────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') runCalculation();
+});
+
+// ── Run on load ──────────────────────────────────────────────────────────────
+window.addEventListener('load', runCalculation);
+</script>
+</body>
+</html>
